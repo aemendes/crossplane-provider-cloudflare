@@ -232,7 +232,7 @@ func (c *Client) CreateApplication(ctx context.Context, accountID string, p Appl
 	if err != nil {
 		return nil, err
 	}
-	return newApplication(resp.ID, string(resp.Type), resp.Domain, resp.Name, resp.AUD, resp.SessionDuration, resp.HTTPOnlyCookieAttribute, resp.SelfHostedDomains, resp.Policies, resp.SaaSApp), nil
+	return newApplication(resp.ID, string(resp.Type), resp.Domain, resp.Name, resp.AUD, resp.SessionDuration, resp.HTTPOnlyCookieAttribute, resp.SelfHostedDomains, resp.Policies, saasAppJSON(resp.JSON.RawJSON())), nil
 }
 
 // GetApplication fetches an Access application by ID. Returns a *cf.Error with
@@ -245,7 +245,7 @@ func (c *Client) GetApplication(ctx context.Context, accountID, appID string) (*
 	if err != nil {
 		return nil, err
 	}
-	return newApplication(resp.ID, string(resp.Type), resp.Domain, resp.Name, resp.AUD, resp.SessionDuration, resp.HTTPOnlyCookieAttribute, resp.SelfHostedDomains, resp.Policies, resp.SaaSApp), nil
+	return newApplication(resp.ID, string(resp.Type), resp.Domain, resp.Name, resp.AUD, resp.SessionDuration, resp.HTTPOnlyCookieAttribute, resp.SelfHostedDomains, resp.Policies, saasAppJSON(resp.JSON.RawJSON())), nil
 }
 
 // ListApplicationsByExactName returns every application in the account whose
@@ -264,7 +264,7 @@ func (c *Client) ListApplicationsByExactName(ctx context.Context, accountID, nam
 	apps := make([]Application, 0, len(page.Result))
 	for i := range page.Result {
 		r := &page.Result[i]
-		apps = append(apps, *newApplication(r.ID, string(r.Type), r.Domain, r.Name, r.AUD, r.SessionDuration, r.HTTPOnlyCookieAttribute, r.SelfHostedDomains, r.Policies, r.SaaSApp))
+		apps = append(apps, *newApplication(r.ID, string(r.Type), r.Domain, r.Name, r.AUD, r.SessionDuration, r.HTTPOnlyCookieAttribute, r.SelfHostedDomains, r.Policies, saasAppJSON(r.JSON.RawJSON())))
 	}
 	return apps, nil
 }
@@ -295,7 +295,7 @@ func (c *Client) UpdateApplication(ctx context.Context, accountID, appID string,
 	if err != nil {
 		return nil, err
 	}
-	return newApplication(resp.ID, string(resp.Type), resp.Domain, resp.Name, resp.AUD, resp.SessionDuration, resp.HTTPOnlyCookieAttribute, resp.SelfHostedDomains, resp.Policies, resp.SaaSApp), nil
+	return newApplication(resp.ID, string(resp.Type), resp.Domain, resp.Name, resp.AUD, resp.SessionDuration, resp.HTTPOnlyCookieAttribute, resp.SelfHostedDomains, resp.Policies, saasAppJSON(resp.JSON.RawJSON())), nil
 }
 
 // DeleteApplication deletes an Access application by ID. It is a no-op if it does not exist.
@@ -392,6 +392,22 @@ func decodePolicyIDs(policies interface{}) []string {
 // struct rather than a plain map, so this round-trips through JSON using only
 // the stable tags every variant shares. client_secret is only ever present in
 // a Create response.
+// saasAppJSON extracts saas_app from an application response's raw JSON. Neither the SDK's typed saas_app nor its
+// per-field raw value can be used: the response is a union over application types and saas_app a SAML/OIDC union,
+// and for real OIDC responses both lose client_id/client_secret.
+func saasAppJSON(raw string) interface{} {
+	var r struct {
+		SaaSApp json.RawMessage `json:"saas_app"`
+	}
+	if err := json.Unmarshal([]byte(raw), &r); err != nil || len(r.SaaSApp) == 0 || string(r.SaaSApp) == "null" {
+		return nil
+	}
+	return r.SaaSApp
+}
+
+// decodeSaaSApp reads saas_app from the raw response JSON (see saasAppJSON). The SDK's
+// typed value can't be used: saas_app is a SAML/OIDC union and for real OIDC responses the SDK resolves it to a
+// variant without client_id, so the client secret (returned only by Create) was silently dropped.
 func decodeSaaSApp(v interface{}) *SaaSApp {
 	if v == nil {
 		return nil

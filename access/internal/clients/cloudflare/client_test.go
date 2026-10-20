@@ -519,3 +519,41 @@ func TestDeletePolicyIsNoopWhenAlreadyGone(t *testing.T) {
 		t.Fatalf("DeletePolicy: %v", err)
 	}
 }
+
+// A real Cloudflare OIDC SaaS response (auth_type, timestamps, nested options, ...). The SDK's typed saas_app
+// union drops client_id/client_secret for this shape, so the client must read the raw response JSON.
+func TestCreateSaaSApplicationRealisticOIDCResponse(t *testing.T) {
+	c := newTestClient(t, jsonHandler(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"success":true,"errors":[],"messages":[],"result":{
+			"id":"app-saas-2","type":"saas","name":"argocd-sso","aud":"aud-2","policies":[],
+			"created_at":"2026-10-20T18:00:00Z","updated_at":"2026-10-20T18:00:00Z",
+			"saas_app":{
+				"auth_type":"oidc","client_id":"real-client-id","client_secret":"real-one-shot-secret",
+				"redirect_uris":["https://argocd.example.com/auth/callback"],
+				"grant_types":["authorization_code"],"scopes":["openid","email","profile"],
+				"public_key":"-----BEGIN PUBLIC KEY-----\nx\n-----END PUBLIC KEY-----","group_filter_regex":".*",
+				"app_launcher_url":"https://team.cloudflareaccess.com","access_token_lifetime":"5m",
+				"allow_pkce_without_client_secret":false,"refresh_token_options":{"lifetime":"90d"},
+				"hybrid_and_implicit_options":{"return_access_token_from_authorization_endpoint":false,"return_id_token_from_authorization_endpoint":false},
+				"custom_claims":[],"created_at":"2026-10-20T18:00:00Z","updated_at":"2026-10-20T18:00:00Z"}}}`))
+	}))
+
+	app, err := c.CreateApplication(context.Background(), "acct-1", ApplicationParams{
+		Type: "saas",
+		Name: "argocd-sso",
+		SaaSApp: &SaaSAppParams{
+			RedirectURIs: []string{"https://argocd.example.com/auth/callback"},
+			GrantTypes:   []string{"authorization_code"},
+			Scopes:       []string{"openid", "email", "profile"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateApplication: %v", err)
+	}
+	if app.SaaSApp == nil || app.SaaSApp.ClientID != "real-client-id" || app.SaaSApp.ClientSecret != "real-one-shot-secret" {
+		t.Fatalf("client credentials not decoded: %+v", app.SaaSApp)
+	}
+	if app.SaaSApp.AccessTokenLifetime != "5m" || app.SaaSApp.RefreshTokenLifetime != "90d" {
+		t.Fatalf("token lifetimes not decoded: %+v", app.SaaSApp)
+	}
+}
