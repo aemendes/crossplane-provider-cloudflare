@@ -1,0 +1,33 @@
+# An AccessApplication of type=saas: Cloudflare acts as an OIDC identity
+# provider for a third-party app (e.g. Coder configured to use Cloudflare
+# Access as its login). Unlike type=self_hosted, there's no domain to set —
+# Cloudflare assigns a hosted OIDC issuer path automatically, exposed at
+# status.atProvider.aud and the clientId/clientSecret connection secret.
+apiVersion: access.cloudflare.crossplane.io/v1alpha1
+kind: AccessApplication
+metadata:
+  name: example-oidc-app
+spec:
+  forProvider:
+    accountId: REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID
+    type: saas
+    name: example-oidc-app
+    oidc:
+      redirectUris:
+        - https://app.example.com/api/oidc/callback
+      grantTypes:
+        - authorization_code
+        - refresh_tokens
+      scopes:
+        - openid
+        - email
+        - profile
+        - groups
+      refreshTokenLifetime: 90d
+    policyIdRefs:
+      - name: example-company-only
+  writeConnectionSecretToRef:
+    namespace: apps
+    name: example-oidc-app-conn
+  providerConfigRef:
+    name: default

@@ -1,0 +1,13 @@
+apiVersion: tunnel.cloudflare.crossplane.io/v1alpha1
+kind: DNSRecord
+metadata:
+  name: example-tunnel-dns
+spec:
+  forProvider:
+    zoneId: REPLACE_WITH_CLOUDFLARE_ZONE_ID
+    name: app.example.com
+    tunnelIdRef:
+      name: example-tunnel
+    proxied: true
+  providerConfigRef:
+    name: default

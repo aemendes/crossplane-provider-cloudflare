@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /tunnel
+    schedule: {interval: weekly}
+    groups:
+      go: {patterns: ["*"]}
+  - package-ecosystem: gomod
+    directory: /access
+    schedule: {interval: weekly}
+    groups:
+      go: {patterns: ["*"]}
+  - package-ecosystem: docker
+    directories: [/tunnel, /access]
+    schedule: {interval: weekly}
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: weekly}

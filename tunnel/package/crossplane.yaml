@@ -1,0 +1,12 @@
+apiVersion: meta.pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-cloudflare-tunnel
+  annotations:
+    meta.crossplane.io/maintainer: Alexandre Mendes
+    meta.crossplane.io/source: github.com/aemendes/crossplane-provider-cloudflare
+    meta.crossplane.io/description: |
+      Native Go Crossplane provider for Cloudflare Zero Trust Tunnels, managing
+      Tunnel, TunnelConfig, and DNSRecord resources directly against the
+      Cloudflare REST API. Scoped to tunnels only — not a general-purpose
+      Cloudflare provider.

@@ -1,0 +1,14 @@
+# References a Secret holding a Cloudflare API token, e.g.:
+#   kubectl -n crossplane-system create secret generic cloudflare-api-creds --from-literal=credentials=<token>
+# Both providers can share the same Secret; each needs its own ProviderConfig.
+apiVersion: access.cloudflare.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: cloudflare-api-creds
+      key: credentials

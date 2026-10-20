@@ -1,0 +1,10 @@
+apiVersion: meta.pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-cloudflare-access
+  annotations:
+    meta.crossplane.io/maintainer: Alexandre Mendes
+    meta.crossplane.io/source: github.com/aemendes/crossplane-provider-cloudflare
+    meta.crossplane.io/description: |
+      Native Go Crossplane provider for Cloudflare Access: Zero Trust Access applications and policies.
+      Scoped to this feature only — not a general-purpose Cloudflare provider.
