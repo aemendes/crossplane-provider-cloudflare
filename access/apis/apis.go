@@ -6,6 +6,7 @@ import (
 
 	accessapplicationv1alpha1 "github.com/aemendes/crossplane-provider-cloudflare/access/apis/accessapplication/v1alpha1"
 	policyv1alpha1 "github.com/aemendes/crossplane-provider-cloudflare/access/apis/policy/v1alpha1"
+	servicetokenv1alpha1 "github.com/aemendes/crossplane-provider-cloudflare/access/apis/servicetoken/v1alpha1"
 	cloudflarev1alpha1 "github.com/aemendes/crossplane-provider-cloudflare/access/apis/v1alpha1"
 )
 
@@ -14,6 +15,7 @@ var AddToSchemes runtime.SchemeBuilder = runtime.SchemeBuilder{
 	cloudflarev1alpha1.SchemeBuilder.AddToScheme,
 	policyv1alpha1.SchemeBuilder.AddToScheme,
 	accessapplicationv1alpha1.SchemeBuilder.AddToScheme,
+	servicetokenv1alpha1.SchemeBuilder.AddToScheme,
 }
 
 // AddToScheme adds all Resources to the Scheme.
