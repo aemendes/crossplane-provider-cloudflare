@@ -10,7 +10,7 @@ the same CRD.
 | Provider | Package | API group | Kinds |
 |---|---|---|---|
 | [`tunnel/`](tunnel/) | `ghcr.io/aemendes/provider-cloudflare-tunnel-pkg` | `tunnel.cloudflare.crossplane.io/v1alpha1` | `Tunnel`, `TunnelConfig`, `DNSRecord` |
-| [`access/`](access/) | `ghcr.io/aemendes/provider-cloudflare-access-pkg` | `access.cloudflare.crossplane.io/v1alpha1` | `AccessApplication`, `Policy` |
+| [`access/`](access/) | `ghcr.io/aemendes/provider-cloudflare-access-pkg` | `access.cloudflare.crossplane.io/v1alpha1` | `AccessApplication`, `Policy`, `ServiceToken` |
 
 With both installed you can declare, in git, everything needed to publish a service in a Kubernetes cluster to the
 internet through a [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
@@ -34,6 +34,7 @@ the tunnel, its connector token, the hostname routing, the DNS record and the lo
 - [provider-cloudflare-access](#provider-cloudflare-access)
   - [Policy](#policy)
   - [AccessApplication](#accessapplication)
+  - [ServiceToken](#servicetoken)
 - [End-to-end example: expose a service through a tunnel, behind Access](#end-to-end-example)
 - [Behaviour worth knowing](#behaviour-worth-knowing)
 - [Development](#development)
@@ -53,7 +54,7 @@ the tunnel, its connector token, the hostname routing, the DNS record and the lo
   | Provider | Token permissions |
   |---|---|
   | tunnel | Account → **Cloudflare Tunnel: Edit**, Zone → **DNS: Edit** (for the zones you route hostnames in) |
-  | access | Account → **Access: Apps and Policies: Edit** |
+  | access | Account → **Access: Apps and Policies: Edit** (+ **Access: Service Tokens: Edit** for `ServiceToken`) |
 
   Create it under *My Profile → API Tokens → Create Token → Custom token*.
 - Your Cloudflare **account ID** (dashboard → any domain → *Overview*, right sidebar) and, for `DNSRecord`, the
@@ -374,6 +375,44 @@ spec:
     sessionDuration: 24h
     policyIdRefs:
       - name: admins
+```
+
+### ServiceToken
+
+An Access service token: a Client ID / Client Secret pair that non-browser clients (CLIs, scripts, other
+services) send as `CF-Access-Client-Id` / `CF-Access-Client-Secret` headers to pass an application whose policy
+admits service tokens (`decision: nonIdentity` with `anyValidServiceToken: true`).
+
+| Field (`spec.forProvider`) | Type | Required | Description |
+|---|---|---|---|
+| `accountId` | string | yes | Cloudflare account ID. Immutable. |
+| `name` | string | yes | Name shown in the dashboard. |
+| `duration` | string | no | Validity, e.g. `8760h` (Cloudflare's default, late-initialized). |
+| `renewBefore` | string | no (default `720h`) | Extend the expiry once less than this remains (same secret). `0s` disables. |
+
+| Status (`status.atProvider`) | Description |
+|---|---|
+| `id` | Service token ID (UUID). |
+| `clientId` | Client ID. |
+| `expiresAt` | When Cloudflare stops accepting the token. |
+
+**Connection secret**: `clientId` and `clientSecret`. Cloudflare returns the secret only on create and on rotate,
+so the provider heals it: if the connection secret is missing, lacks `clientSecret` or belongs to another token,
+the token is **rotated** and the new pair published. Delete the connection secret to rotate on demand. Expiry is
+handled with Cloudflare's refresh, which keeps the secret, so clients never need updating.
+
+```yaml
+apiVersion: access.cloudflare.crossplane.io/v1alpha1
+kind: ServiceToken
+metadata:
+  name: cli
+spec:
+  forProvider:
+    accountId: <account-id>
+    name: cli
+  writeConnectionSecretToRef:
+    namespace: crossplane-system
+    name: cli-service-token
 ```
 
 ---

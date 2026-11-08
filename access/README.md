@@ -1,7 +1,7 @@
 # provider-cloudflare-access
 
 A native Go Crossplane provider for Cloudflare Zero Trust Access, managing
-`AccessApplication` and `Policy` resources (`access.cloudflare.crossplane.io/v1alpha1`)
+`AccessApplication`, `Policy` and `ServiceToken` resources (`access.cloudflare.crossplane.io/v1alpha1`)
 directly against the Cloudflare REST API via the official
 [`cloudflare-go/v7`](https://github.com/cloudflare/cloudflare-go) SDK. Deliberately
 scoped to what's actually in use rather than the full Cloudflare Access surface:
@@ -19,9 +19,11 @@ pattern is modeled on.
 - `apis/v1alpha1` — `ProviderConfig` / `ProviderConfigUsage` (credential wiring, standard Crossplane pattern)
 - `apis/policy/v1alpha1` — the `Policy` managed resource (a reusable, account-level Access policy)
 - `apis/accessapplication/v1alpha1` — the `AccessApplication` managed resource (a self-hosted Access application; references `Policy` resources by ID, in evaluation order)
-- `internal/clients/cloudflare` — thin wrapper around `cloudflare-go/v7`, scoped to the Access Applications and Policies services
+- `apis/servicetoken/v1alpha1` — the `ServiceToken` managed resource (an Access service token; Client ID/Secret published to the connection secret)
+- `internal/clients/cloudflare` — thin wrapper around `cloudflare-go/v7`, scoped to the Access Applications, Policies and Service Tokens services
 - `internal/controller/policy` — `Observe`/`Create`/`Update`/`Delete` against Cloudflare's `/access/policies` API
 - `internal/controller/accessapplication` — same, for applications; resolves attached `policyIds` via a to-many cross-resource reference (`reference.ResolveMultiple`)
+- `internal/controller/servicetoken` — same, for service tokens, plus secret self-healing and expiry renewal (below)
 - `internal/controller/providerconfig` — standard ProviderConfig usage-tracking controller
 - `cmd/provider` — manager entrypoint
 - `package/` — Crossplane package metadata (`crossplane.yaml`) + generated CRDs
@@ -78,6 +80,24 @@ pattern is modeled on.
   wrong one on the actual cluster. Renamed before any real resource existed to
   avoid ever having a live collision.
 
+- **Service tokens: the secret is one-shot.** Cloudflare returns a token's
+  Client Secret only on create and on rotate, never on reads. `Create`
+  publishes `clientId`/`clientSecret` to `writeConnectionSecretToRef`; every
+  `Observe` then reads that Secret (uncached, via the API reader, so a stale
+  informer cache right after `Create` can't trigger a needless rotation). If it
+  is missing, lacks `clientSecret`, or holds another token's `clientId` (an
+  adopted token, a failed publish, a deleted Secret), the token is reported
+  not up to date and `Update` **rotates** it (same Client ID, new secret,
+  previous secret expired immediately) and publishes the new pair. Deleting the
+  connection Secret is therefore how you rotate. Without
+  `writeConnectionSecretToRef` the provider never rotates.
+- **Service tokens: expiry.** Tokens expire after `duration` (Cloudflare's
+  default: 8760h). Once less than `renewBefore` (default 720h) remains,
+  `Update` calls Cloudflare's refresh, which extends the expiry by `duration`
+  and keeps the same Client ID and Secret, so clients never notice.
+  `renewBefore` is capped at a third of `duration` so short-lived tokens are
+  not refreshed on every poll; `"0s"` disables renewal.
+
 ## Build & test locally
 
 ```sh
@@ -94,4 +114,5 @@ Releases are built by the repository's [build workflow](../.github/workflows/bui
 ## ProviderConfig
 
 Its own kind at `access.cloudflare.crossplane.io/v1alpha1`, referencing a Secret
-holding a Cloudflare API Token scoped to at least "Access: Apps and Policies: Edit".
+holding a Cloudflare API Token scoped to at least "Access: Apps and Policies: Edit"
+(and "Access: Service Tokens: Edit" for `ServiceToken`).

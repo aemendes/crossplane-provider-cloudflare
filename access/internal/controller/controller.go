@@ -9,6 +9,7 @@ import (
 	"github.com/aemendes/crossplane-provider-cloudflare/access/internal/controller/accessapplication"
 	"github.com/aemendes/crossplane-provider-cloudflare/access/internal/controller/policy"
 	"github.com/aemendes/crossplane-provider-cloudflare/access/internal/controller/providerconfig"
+	"github.com/aemendes/crossplane-provider-cloudflare/access/internal/controller/servicetoken"
 )
 
 // Setup creates all controllers with the supplied logger and adds them to the supplied manager.
@@ -17,6 +18,7 @@ func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 		providerconfig.Setup,
 		policy.Setup,
 		accessapplication.Setup,
+		servicetoken.Setup,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err
