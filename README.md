@@ -304,6 +304,12 @@ Each **rule** sets exactly one of:
 | `emailDomain` | string | any address in a domain, e.g. `example.com` |
 | `ipRange` | string | an IPv4/IPv6 CIDR |
 | `anyValidServiceToken` | `true` | any valid Access service token of the account |
+| `serviceTokenRef` | `{name: <ServiceToken>}` | only that service token (resolves `serviceTokenId`) |
+| `serviceTokenId` | string | only the service token with this Cloudflare ID |
+
+`anyValidServiceToken` admits every token in the account, so one token for one client opens every app with that
+rule. To keep a token to a single app, give that app a `nonIdentity` policy with its `serviceTokenRef`, and list
+the allowed tokens by reference in shared policies instead of `anyValidServiceToken`.
 
 | Status | Description |
 |---|---|
@@ -381,7 +387,7 @@ spec:
 
 An Access service token: a Client ID / Client Secret pair that non-browser clients (CLIs, scripts, other
 services) send as `CF-Access-Client-Id` / `CF-Access-Client-Secret` headers to pass an application whose policy
-admits service tokens (`decision: nonIdentity` with `anyValidServiceToken: true`).
+admits service tokens (`decision: nonIdentity` with `serviceTokenRef` to this token, or `anyValidServiceToken: true`).
 
 | Field (`spec.forProvider`) | Type | Required | Description |
 |---|---|---|---|

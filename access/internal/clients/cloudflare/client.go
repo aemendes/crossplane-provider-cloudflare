@@ -450,14 +450,15 @@ func decodeSaaSApp(v interface{}) *SaaSApp {
 // PolicyRule is a single Cloudflare Access rule. Exactly one field should be
 // set. This covers a deliberately small, common subset of Cloudflare's rule
 // types (see zero_trust.AccessRuleUnionParam for the full set, which also
-// includes SAML/Azure/GitHub groups, device posture, geo, service tokens,
-// etc. — unsupported here).
+// includes SAML/Azure/GitHub groups, device posture, geo, etc. — unsupported
+// here).
 type PolicyRule struct {
 	Everyone             bool
 	Email                string
 	EmailDomain          string
 	IPRange              string
 	AnyValidServiceToken bool
+	ServiceTokenID       string
 }
 
 // errEmptyRule is returned for a PolicyRule with none of its fields set —
@@ -480,6 +481,8 @@ func toAccessRuleParam(r PolicyRule) (zero_trust.AccessRuleUnionParam, error) {
 		return zero_trust.IPRuleParam{IP: cf.F(zero_trust.IPRuleIPParam{IP: cf.F(r.IPRange)})}, nil
 	case r.AnyValidServiceToken:
 		return zero_trust.AnyValidServiceTokenRuleParam{AnyValidServiceToken: cf.F(zero_trust.AnyValidServiceTokenRuleAnyValidServiceTokenParam{})}, nil
+	case r.ServiceTokenID != "":
+		return zero_trust.ServiceTokenRuleParam{ServiceToken: cf.F(zero_trust.ServiceTokenRuleServiceTokenParam{TokenID: cf.F(r.ServiceTokenID)})}, nil
 	default:
 		return nil, errEmptyRule
 	}
@@ -539,6 +542,9 @@ func fromAccessRule(r zero_trust.AccessRule) PolicyRule {
 	}
 	if ip, ok := decodeRuleValue(r.IP, "ip"); ok {
 		return PolicyRule{IPRange: ip}
+	}
+	if id, ok := decodeRuleValue(r.ServiceToken, "token_id"); ok {
+		return PolicyRule{ServiceTokenID: id}
 	}
 	return PolicyRule{}
 }
