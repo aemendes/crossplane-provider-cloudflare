@@ -33,6 +33,17 @@ type AccessRule struct {
 	// rule; leave unset/false and set exactly one other field otherwise.
 	// +optional
 	AnyValidServiceToken bool `json:"anyValidServiceToken,omitempty"`
+
+	// ServiceTokenID matches requests bearing this one Access service token
+	// (its Cloudflare ID), and no other. Prefer ServiceTokenRef.
+	// +optional
+	ServiceTokenID string `json:"serviceTokenId,omitempty"`
+
+	// ServiceTokenRef references a ServiceToken resource to resolve
+	// serviceTokenId from. Until the token exists the ID stays empty and the
+	// policy fails to apply (an empty rule is never sent).
+	// +optional
+	ServiceTokenRef *xpv1.Reference `json:"serviceTokenRef,omitempty"`
 }
 
 // PolicyParameters define the desired state of a reusable Cloudflare Access policy.

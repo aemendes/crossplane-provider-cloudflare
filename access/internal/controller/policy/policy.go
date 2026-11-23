@@ -249,6 +249,7 @@ func toClientRules(rules []v1alpha1.AccessRule) []cloudflare.PolicyRule {
 			EmailDomain:          r.EmailDomain,
 			IPRange:              r.IPRange,
 			AnyValidServiceToken: r.AnyValidServiceToken,
+			ServiceTokenID:       r.ServiceTokenID,
 		}
 	}
 	return out

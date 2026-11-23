@@ -418,6 +418,46 @@ func TestCreatePolicyNonIdentityDecisionAndServiceTokenRule(t *testing.T) {
 	}
 }
 
+func TestCreatePolicySpecificServiceTokenRule(t *testing.T) {
+	c := newTestClient(t, jsonHandler(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		include := body["include"].([]any)
+		if len(include) != 1 {
+			t.Fatalf("expected 1 include rule, got %d", len(include))
+		}
+		st, ok := include[0].(map[string]any)["service_token"].(map[string]any)
+		if !ok || st["token_id"] != "tok-1" {
+			t.Fatalf("expected a service_token rule for tok-1, got %v", include[0])
+		}
+		if _, any := include[0].(map[string]any)["any_valid_service_token"]; any {
+			t.Fatalf("a specific token must never widen to any_valid_service_token: %v", include[0])
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"success": true, "errors": []any{}, "messages": []any{},
+			"result": map[string]any{
+				"id": "pol-3", "name": "radio", "decision": "non_identity",
+				"include": []map[string]any{{"service_token": map[string]any{"token_id": "tok-1"}}},
+				"exclude": []any{}, "require": []any{},
+			},
+		})
+	}))
+
+	p, err := c.CreatePolicy(context.Background(), "acct-1", PolicyParams{
+		Name:     "radio",
+		Decision: "nonIdentity",
+		Include:  []PolicyRule{{ServiceTokenID: "tok-1"}},
+	})
+	if err != nil {
+		t.Fatalf("CreatePolicy: %v", err)
+	}
+	if len(p.Include) != 1 || p.Include[0] != (PolicyRule{ServiceTokenID: "tok-1"}) {
+		t.Fatalf("expected the service_token rule decoded back to tok-1 (no drift), got %+v", p.Include)
+	}
+}
+
 func TestCreatePolicyBypassDecisionPassesThroughUnchanged(t *testing.T) {
 	c := newTestClient(t, jsonHandler(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any

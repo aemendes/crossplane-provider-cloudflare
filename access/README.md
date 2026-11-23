@@ -31,7 +31,8 @@ pattern is modeled on.
 ## Scope decisions worth knowing
 
 - **Rule types**: `Policy.include`/`exclude`/`require` support `everyone`, `email`,
-  `emailDomain`, `ipRange`, and `anyValidServiceToken`. A rule Cloudflare returns
+  `emailDomain`, `ipRange`, `anyValidServiceToken`, and one specific service token
+  (`serviceTokenId`, or `serviceTokenRef` to a `ServiceToken`). A rule Cloudflare returns
   that this provider doesn't recognize (SAML/Azure/GitHub/Okta/GSuite group,
   device posture, geo, certificate, etc.) decodes to a zero-value rule, which
   never matches a declared rule — so it correctly shows up as configuration
